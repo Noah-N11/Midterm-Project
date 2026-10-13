@@ -1,0 +1,17 @@
+[Unit]
+Description=Server Monitoring Project Stress Loop
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=notify
+NotifyAccess=all
+ExecStart=/opt/server-monitor/stress-loop.sh
+Restart=always
+RestartSec=5
+WatchdogSec=90
+TimeoutStartSec=30
+User=root
+
+[Install]
+WantedBy=multi-user.target
