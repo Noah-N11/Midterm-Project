@@ -284,7 +284,7 @@ def update_dashboard(n_interval, selected_server, cpu_thresh, mem_thresh, disk_t
                 "textAlign": "center",
             },
             children=[
-                html.H4("Pipe Stress Event", style={"margin": "0 0 5px 0"}), # cite: 1
+                html.H4("Pipe Stress Event", style={"margin": "0 0 5px 0"}),
                 html.H4(f"{active_stress}", style={"margin": "8px 0 0 0", "color": "#5b21b6" if active_stress != "IDLE" else "#777"}),
             ],
         ),
