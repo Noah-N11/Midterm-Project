@@ -82,25 +82,3 @@ def check_notification(metric_name, current_value, mode = "custom", threshold = 
         
     else:
         raise ValueError("Current notification mode is invalid.")
-
-#Test Code
-if __name__ == "__main__":
-    print(check_threshold("CPU", 85, 80))
-    print(check_threshold("Memory", 75, 70))
-
-    print(check_usage_level(15))
-    print(check_usage_level(50))
-    print(check_usage_level(75))
-    print(check_usage_level(95))
-
-    print(check_severity_alert(75, "HIGH"))
-    print(check_severity_alert(95, "HIGH"))
-    print(check_severity_alert(50, "HIGH"))
-    print(check_severity_alert(95, "CRITICAL"))
-    print(check_severity_alert(75, "CRITICAL"))
-
-    print(check_notification("CPU", 85, mode="custom", threshold=80))
-    print(check_notification("CPU", 75, mode="preset", minimum_severity="HIGH"))
-    print(check_notification("CPU", 90, mode="custom", threshold=80))
-    print(check_notification("CPU", None, mode="custom"))
-    print(check_notification("Memory", None, mode="preset"))
