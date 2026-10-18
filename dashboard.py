@@ -5,8 +5,10 @@ from dash import Dash, Input, Output, State, dcc, html
 
 # Our Servers
 SERVERS = {
-    "Server 1 (My VM)": "http://34.74.77.28:8000/metrics",
-    # add teammate servers
+    "Server 1": "http://34.74.77.28:8000/metrics",
+    "Server 2": "http://35.255.80.106:8000/metrics",
+    "Server 3": "http://34.44.252.24:8000/metrics",
+    # add last server
 }
 
 FONT_FAMILY = "Courier New, monospace"
@@ -55,6 +57,7 @@ def create_stat_card(title, value, unit, threshold, is_online):
     border_style = "2px solid red" if alert else "1px solid #d8b4fe"
     status_msg = "CRITICAL" if alert else "NORMAL"
 
+
     return html.Div(
         style={
             "flex": "1",
@@ -86,7 +89,7 @@ app.layout = html.Div(
             "Linux Infrastructure Observability Dashboard",
             style={"color": "#2e1065"},
         ),
-
+        
         # Control Panel: Server Selection & Threshold Settings
         html.Div(
             style={
@@ -115,7 +118,7 @@ app.layout = html.Div(
                     style={"flex": "1"},
                     children=[
                         html.Label("CPU Alert Threshold (%):", style={"fontWeight": "bold", "color": "#3b0764"}),
-                        dcc.Input(
+                        dcc.Input(  
                             id="cpu-threshold",
                             type="number",
                             value=80,
@@ -123,7 +126,7 @@ app.layout = html.Div(
                             max=100,
                             style={"width": "100%", "padding": "6px"},
                         ),
-                    ],
+                    ],  
                 ),
                 html.Div(
                     style={"flex": "1"},
@@ -200,8 +203,7 @@ app.layout = html.Div(
                 dcc.Graph(id="disk-gauge-graph", style={"height": "450px"})
             ],
         ),
-
-        # Polling every 3 seconds
+    # Polling every 3 seconds
         dcc.Interval(id="interval-poller", interval=3000, n_intervals=0),
     ],
 )
@@ -220,7 +222,7 @@ app.layout = html.Div(
         State("mem-threshold", "value"),
         State("disk-threshold", "value"),
     ],
-)
+    )
 
 def update_dashboard(n_interval, selected_server, cpu_thresh, mem_thresh, disk_thresh):
     if selected_server not in metrics_history:
@@ -233,7 +235,7 @@ def update_dashboard(n_interval, selected_server, cpu_thresh, mem_thresh, disk_t
     is_online = True
     active_stress = "IDLE"
     data = {"cpu_pct": 0, "mem_pct": 0, "disk_pct": 0, "net_rx_kbps": 0, "net_tx_kbps": 0}
-
+    
     try:
         resp = requests.get(endpoint, timeout=2.0)
         if resp.status_code == 200:
@@ -261,13 +263,20 @@ def update_dashboard(n_interval, selected_server, cpu_thresh, mem_thresh, disk_t
     df = metrics_history[selected_server]
     df = pd.concat([df, pd.DataFrame([new_entry])], ignore_index=True).tail(HISTORY_WINDOW)
     metrics_history[selected_server] = df
-
+    
     cards = [
         create_stat_card("CPU Usage", new_entry["cpu_pct"], "%", cpu_thresh or 80, is_online),
         create_stat_card("Memory Usage", new_entry["mem_pct"], "%", mem_thresh or 80, is_online),
         create_stat_card("Disk Usage", new_entry["disk_pct"], "%", disk_thresh or 85, is_online),
         html.Div(
-            style={"flex": "1", "backgroundColor": "#fff", "padding": "12px", "borderRadius": "6px", "border": "1px solid #d8b4fe", "textAlign": "center"},
+            style={
+                "flex": "1",
+                "backgroundColor": "#fff",
+                "padding": "12px",
+                "borderRadius": "6px",
+                "border": "1px solid #d8b4fe",
+                "textAlign": "center"
+            },
             children=[
                 html.H4("Network I/O", style={"margin": "0 0 5px 0"}),
                 html.H3(f"RX: {new_entry['net_rx_kbps']:.1f} KB/s", style={"margin": "0", "color": "#0055cc"}),
@@ -290,4 +299,94 @@ def update_dashboard(n_interval, selected_server, cpu_thresh, mem_thresh, disk_t
         ),
     ]
 
+# Plotting CPU and RAM
+    cpu_mem_fig = go.Figure()
+    cpu_mem_fig.add_truce(
+        go.Scatter(
+            x=df["time_label"], 
+            y=df["cpu_pct"], 
+            mode="lines+markers", 
+            name="CPU %", 
+            line=dict(color="#d32f2f"),
+        )
+    )
+    cpu_mem_fig.add_trace(
+        go.Scatter(
+            x=df["time_label"],
+            y=df["mem_pct"],
+            mode="lines+markers",
+            name="RAM %",
+            line=dict(color="#1976d2"),
+        )
+    )
+    cpu_mem_fig.update_layout(
+        title=f"CPU & Memory ({selected_server})",
+        font=dict(family=FONT_FAMILY),
+        xaxis=dict(title="Elapsed Time", type="category"),
+        yaxis=dict(range=[0, 105], title="%"),
+        template="plotly_white",
+        margin=dict(l=40, r=20, t=40, b=40),
+    )
 
+# Plotting Network Traffic
+    net_fig = go.Figure()
+    net_fig.add_trace(
+        go.Scatter(
+            x=df["time_label"],
+            y=df["net_rx_kbps"], 
+            mode="lines",
+            name="RX KB/s",
+            fill="tozeroy",
+            line=dict(color="#388e3c"),
+        )
+    )
+    net_fig.add_trace(
+        go.Scatter(
+            x=df["time_label"],
+            y=df["net_tx_kbps"],
+            mode="lines", name="TX KB/s",
+            fill="tozeroy",
+            line=dict(color="#7b1fa2"),
+        )
+    )
+    net_fig.update_layout(
+        title=f"Network Throughput ({selected_server})",
+        font=dict(family=FONT_FAMILY),
+        xaxis=dict(title="Elapsed Time", type="category"),
+        yaxis_title="KB/s",
+        template="plotly_white",
+        margin=dict(l=40, r=20, t=40, b=40),
+    )
+
+#Plotting Storage Gauge
+    disk_gauge = go.Figure(
+        go.Indicator(
+            mode="gauge+number",
+            value=new_entry["disk_pct"],
+            title={"text": "Disk Allocation (%)", "font": {"family": FONT_FAMILY, "size": 18}},
+            number={"font": {"family": FONT_FAMILY, "size": 42}, "suffix": "%"},
+            gauge={
+                "axis": {"range": [0, 100]},
+                "bar": {
+                    "color": "red"
+                    if new_entry["disk_pct"] >= (disk_thresh or 85)
+                    else "#6a1b9a"
+                },
+                "steps": [
+                    {"range": [0, disk_thresh or 85], "color": "#f3e8ff"},
+                    {"range": [disk_thresh or 85, 100], "color": "#ffcdd2"},
+                ],
+             },
+        )
+    )
+    
+    disk_gauge.update_layout(
+        font=dict(family=FONT_FAMILY),
+        height=360,
+        margin=dict(l=30, r=30, t=40, b=20),
+    )
+    
+    return cards, cpu_mem_fig, net_fig, disk_gauge
+
+if __name__ == "__main__":
+    app.run(debug=True, host="127.0.0.1", port=8050)
