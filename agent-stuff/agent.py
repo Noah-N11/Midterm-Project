@@ -1,5 +1,17 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.agents import create_agent
+import paramiko
+
+"""
+client = paramiko.SSHClient()
+client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+client.connect(
+    hostname="35.211.54.249",
+    port=22,
+    key_filename="agent-stuff/.sshkey"
+)
+client.close()
+"""
 
 #Opens a hidden file ".api-info", which has permissions set to 600, and reads the api key within
 otherf = open("agent-stuff/.api-info", "r")
