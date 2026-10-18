@@ -2,6 +2,7 @@
 
 set -euo pipefail
 
+#This first portion defines the SSH port, API port, and allowed IP for the firewall.
 SSH_PORT=22
 API_PORT=5000
 ALLOWED_IP="${1:-}"
@@ -50,27 +51,31 @@ if ! command -v ufw >/dev/null 2>&1; then
     exit 1
 fi
 
-
+#This portion gathers the listening TCP ports, existing UFW rules, and the UFW activation status which will be used for the next checks.
 SSH_LISTENERS=$(ss -tln)
 EXISTING_RULES=$(ufw show added)
 UFW_STATUS=$(ufw status)
 
+#This check sees if this UFW configuration is already active. If it is active, warns the user and stops the script.
 if grep -q "^Status: active" <<< "$UFW_STATUS"; then
     echo "Error: UFW is already running. Please review the active firewall configuration before proceeding."
     exit 1
 fi
 
+#This check sees if there are already configured rules with the UFW. If there are already configured rules, warns the user and stops the script.
 if [[ "$EXISTING_RULES" != *"(None)"* ]]; then
     echo "WARNING: There are already pre-existing UFW rules. Please review the current rules before proceeding:"
     echo "$EXISTING_RULES"
     exit 1
 fi
 
+#This check verifies that the SSH port is listening on the configured port. This check ensures that we do not lock ourselves out of the VM.
 if ! grep -qE "[:.]${SSH_PORT}[[:space:]]" <<< "$SSH_LISTENERS"; then
     echo "Error: The SSH does not appear to be listening on the port $SSH_PORT."
     exit 1
 fi
 
+#This part of the code confirms that the SSH port is verified. 
 echo "SSH port $SSH_PORT verified."
 echo "Preparing Firewall Config..."
 echo "Monitoring API Port: $API_PORT"
@@ -95,6 +100,7 @@ ufw allow "${SSH_PORT}/tcp"
 ufw allow from "${ALLOWED_IP}" to any port "${API_PORT}" proto tcp
 ufw default deny incoming
 
+#Finally, after everything runs successfully, several print statements will be ran to tell the user that everything started as intended.
 echo "Firewall rules have been added to the UFW configuration."
 echo "WARNING: While the firewall has been successfully configured, UFW is not automatically enabled."
 echo "Make sure to review the rules and verify SSH access before activating UFW."
