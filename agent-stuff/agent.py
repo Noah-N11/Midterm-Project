@@ -26,7 +26,7 @@ otherf.close()
 MAX_REQUESTS_PER_MIN = 4
 DELAY = 60
 
-@tool
+
 def find_memory():
     """Finds the memory usage of the vm"""
     para = paramiko.SSHClient()
@@ -41,7 +41,7 @@ def find_memory():
     stdin, stdout, stderr = para.exec_command("free -h")
     return (stdout.read().decode())
 
-@tool
+
 def find_cpu_usage():
     """Finds the cpu usage of the vm"""
     para = paramiko.SSHClient()
@@ -56,7 +56,7 @@ def find_cpu_usage():
     stdin, stdout, stderr = para.exec_command("top -n 1 | grep %Cpu")
     return (stdout.read().decode())
 
-@tool
+
 def find_disk_usage():
     """Finds the disk usage of root on the vm"""
     para = paramiko.SSHClient()
