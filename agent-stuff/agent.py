@@ -26,6 +26,7 @@ otherf.close()
 MAX_REQUESTS_PER_MIN = 4
 DELAY = 60
 
+#Below are the tools/functions, each needs a file with the public ssh key, to access the vm
 
 def find_memory():
     """Finds the memory usage of the vm"""
@@ -41,7 +42,6 @@ def find_memory():
     stdin, stdout, stderr = para.exec_command("free -h")
     return (stdout.read().decode())
 
-
 def find_cpu_usage():
     """Finds the cpu usage of the vm"""
     para = paramiko.SSHClient()
@@ -53,7 +53,7 @@ def find_cpu_usage():
         key_filename="agent-stuff/.sshkey"
     )
     checkvar = True
-    stdin, stdout, stderr = para.exec_command("top -n 1 | grep %Cpu")
+    stdin, stdout, stderr = para.exec_command("top -b -n 1 | grep %Cpu")
     return (stdout.read().decode())
 
 
@@ -93,14 +93,15 @@ agent = create_agent(
 )
 
 #Starts the agent with a given input
-print("Please enter your question here: ")
-while(True):
-    u_input = input()
-    response = agent.invoke({
-        "messages": [{"role": "user", "content": u_input}]
-        })
-    print(response["messages"][-1].content)
-    #If a tool was used, close the connection to the vm and set the check back to false 
-    if(checkvar):
-        para.close()
-        checkvar = False
+if __name__ == "__main__":
+    print("Please enter your question here: ")
+    while(True):
+        u_input = input()
+        response = agent.invoke({
+            "messages": [{"role": "user", "content": u_input}]
+            })
+        print(response["messages"][-1].content)
+        #If a tool was used, close the connection to the vm and set the check back to false 
+        if(checkvar):
+            para.close()
+            checkvar = False
