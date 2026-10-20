@@ -1,0 +1,17 @@
+[Unit]
+Description=Linux Stress Event Named Pipe Reader
+After=local-fs.target
+Before=stress-loop.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+RuntimeDirectory=unix-monitor
+RuntimeDirectoryMode=0755
+ExecStart=/usr/bin/python3 /opt/unix-monitor/stress_event_reader.python3
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

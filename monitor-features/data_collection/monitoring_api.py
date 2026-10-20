@@ -1,7 +1,16 @@
 import json
 import psutil
 import time
+from pathlib import Path
 from http.server import BaseHTTPRequestHandler, HTTPServer
+
+STRESS_STATUS_PATH = Path("/run/unix-monitor/current-stress.txt")
+
+def get_active_stress():
+    try:
+        return STRESS_STATUS_PATH.read_text().strip() or "UNKNOWN"
+    except (OSError, UnicodeError):
+        return "UNKNOWN"
 
 class MonitoringHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -30,7 +39,7 @@ class MonitoringHandler(BaseHTTPRequestHandler):
                 "disk_pct": disk_pct,
                 "net_rx_kbps": round(net_rx_kbps, 2),
                 "net_tx_kbps": round(net_tx_kbps, 2),
-                "active_stress": "UNKNOWN"
+                "active_stress": get_active_stress()
             }
 
             response = json.dumps(metrics).encode("utf-8")
@@ -41,7 +50,7 @@ class MonitoringHandler(BaseHTTPRequestHandler):
             self.wfile.write(response)
 
         except Exception as error:
-            print(f"Mertic Collection Has Failed: {error}")
+            print(f"Metric Collection Has Failed: {error}")
             self.send_error(500, "Unable to collect system metrics.")
 
 if __name__ == "__main__":

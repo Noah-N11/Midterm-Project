@@ -10,17 +10,30 @@ log() {
     echo "$(date '+%F %T') - $1" >> "$LOG_FILE"
 }
 
+send_stress_event() {
+    local event="$1"
+    local fifo="/run/unix-monitor/stress-events.fifo"
+
+    if [ -p "$fifo" ]; then
+        timeout 1s bash -c 'printf "%s\n" "$1" > "$2"' \
+            _ "$event" "$fifo" || true
+    fi
+}
+
 run_test() {
     local category="$1"
     shift
 
     log "Starting ${category} stress test"
+    send_stress_event "$category"
 
     stress-ng "$@" --timeout "${STRESS_DURATION}s" \
         --metrics-brief >> "$LOG_FILE" 2>&1
     local result=$?
 
     log "Finished ${category} stress test (exit code: ${result})"
+    send_stress_event "IDLE"
+
     sleep "$REST_DURATION"
     systemd-notify WATCHDOG=1
 }

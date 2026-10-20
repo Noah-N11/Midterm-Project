@@ -20,6 +20,11 @@ STRESS_SOURCE_SERVICE="$PROJECT_DIR/stress-loop.service"
 STRESS_INSTALL_DIR="/opt/server-monitor"
 STRESS_SERVICE_FILE="/etc/systemd/system/stress-loop.service"
 
+#This code sets up the reader for the stress test.
+READER_SCRIPT="$PROJECT_DIR/monitor-features/data_collection/stress_event_reader.py"
+READER_SOURCE_SERVICE="$PROJECT_DIR/stress-event-reader.service"
+READER_SERVICE_FILE="/etc/systemd/system/stress-event-reader.service"
+
 echo "Starting The Linux Monitoring API Installation..."
 
 #This part of the setup code is meant to verify that this code is being ran with "sudo".
@@ -136,6 +141,29 @@ systemctl daemon-reload
 #Finally, the stress-loop installation ends, providing the user with the method to use the stress loop.
 echo "The Stress-Loop Files Have Been Successfully Installed."
 echo "However, The Stress-Loop Must Be Manually Enabled Using: systemctl enable --now stress-loop.service"
+
+#The third portion of the setup script installs the named-pipe reader.
+echo "Installing Stress Event Reader..."
+if [ ! -f "$READER_SCRIPT" ] || [ ! -f "$READER_SOURCE_SERVICE" ]; then
+    echo "ERROR: Stress Event Reader Files Were Not Found."
+    exit 1
+fi
+
+#This part of the setup copies the reader into the monitoring application's installation directory.
+install -o root -g root -m 644 \
+    "$READER_SCRIPT" \
+    "$INSTALL_DIR/stress-event-reader.py"
+
+#This part of the setup installs the service's systemd definition.
+install -o root -g root -m 644 \
+    "$READER_SOURCE_SERVICE" \
+    "$READER_SERVICE_FILE"
+
+#This part of the setup reloads the system, then starts up the reader.
+systemctl daemon-reload
+systemctl enable --now stress-event-reader.service
+echo "Stress Event Reader Has Been Installed And Started."
+sleep 1
 
 #At the end of the setup, the user is told that the VM setup script completed successfully, and their VM should be ready to work with the dashboard.
 echo "VM Setup Has Been Completed!"

@@ -1,6 +1,7 @@
 [Unit]
 Description=Server Monitoring Project Stress Loop
-After=network.target
+After=network.target stress-stress_event_reader.service
+Requires=stress-event-reader.service
 StartLimitIntervalSec=0
 
 [Service]
