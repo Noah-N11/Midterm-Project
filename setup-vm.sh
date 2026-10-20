@@ -152,7 +152,7 @@ fi
 #This part of the setup copies the reader into the monitoring application's installation directory.
 install -o root -g root -m 644 \
     "$READER_SCRIPT" \
-    "$INSTALL_DIR/stress-event-reader.py"
+    "$INSTALL_DIR/stress_event_reader.py"
 
 #This part of the setup installs the service's systemd definition.
 install -o root -g root -m 644 \

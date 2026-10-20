@@ -9,7 +9,7 @@ User=root
 Group=root
 RuntimeDirectory=unix-monitor
 RuntimeDirectoryMode=0755
-ExecStart=/usr/bin/python3 /opt/unix-monitor/stress_event_reader.python3
+ExecStart=/usr/bin/python3 /opt/unix-monitor/stress_event_reader.py
 Restart=always
 RestartSec=5
 
