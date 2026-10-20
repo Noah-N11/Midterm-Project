@@ -3,7 +3,6 @@
 set -u
 
 LOG_FILE="/var/log/stress-loop.log"
-STRESS_DURATION=30
 REST_DURATION=15
 
 log() {
@@ -22,12 +21,13 @@ send_stress_event() {
 
 run_test() {
     local category="$1"
-    shift
+    local duration="$2"
+    shift 2
 
-    log "Starting ${category} stress test"
+    log "Starting ${category} stress test for ${duration}s"
     send_stress_event "$category"
 
-    stress-ng "$@" --timeout "${STRESS_DURATION}s" \
+    stress-ng "$@" --timeout "${duration}s" \
         --metrics-brief >> "$LOG_FILE" 2>&1
     local result=$?
 
@@ -43,11 +43,11 @@ log "Stress loop started"
 systemd-notify --ready --status="Stress loop running"
 
 while true; do
-    run_test "CPU" --cpu 2 --cpu-load 80
-    run_test "Memory" --vm 1 --vm-bytes 25% --vm-keep
-    run_test "Disk I/O" --io 2
-    run_test "Filesystem" --hdd 1 --hdd-bytes 128M
-    run_test "Process" --fork 4
+    run_test "CPU" 30 --cpu 2 --cpu-load 80
+    run_test "Memory"  20 --vm 1 --vm-bytes 25% --vm-keep
+    run_test "Disk I/O" 15 --io 2
+    run_test "Filesystem" 10 --hdd 1 --hdd-bytes 128M
+    run_test "Process"  15 --fork 4
 
     log "All tests complete, starting next cycle"
 done
