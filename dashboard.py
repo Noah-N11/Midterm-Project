@@ -18,15 +18,10 @@ from data_collector import metric_collection
 
 # Our Servers
 SERVERS = {
-    #"Server 1": "http://34.74.77.28:8000/metrics",
-
-    #Temporary Test Server
-    "Server 1": "http://127.0.0.1:8000/metrics",
-
+    "Server 1": "http://34.74.77.28:8000/metrics",
     "Server 2": "http://35.255.80.106:8000/metrics",
     "Server 3": "http://34.44.252.24:8000/metrics",
-
-    # add last server
+    "Server 4": "http://35.211.54.249:8000/metrics",
 }
 
 FONT_FAMILY = "Courier New, monospace"
@@ -560,7 +555,7 @@ def toggle_notification_settings(notification_mode):
     ],
 
     [Input("interval-poller", "n_intervals"), Input("server-selector", "value"), Input("notification-mode", "value"),
-    Input("cpu-severity", "value"), Input("mem-severity", "value"), Input("disk-severity", "value"),
+    Input("cpu-severity", "value"), Input("mem-severity", "value"), Input("disk-severity", "value"), Input("notification-scope", "value"),
     ],
 
     [
@@ -573,7 +568,7 @@ def toggle_notification_settings(notification_mode):
     )
 
 def update_dashboard(n_interval, selected_server, notification_mode, cpu_severity, mem_severity, disk_severity, 
-cpu_thresh, mem_thresh, disk_thresh, notification_history, active_notifications):
+notification_scope, cpu_thresh, mem_thresh, disk_thresh, notification_history, active_notifications):
     if selected_server not in metrics_history:
         metrics_history[selected_server] = pd.DataFrame(
             columns=["time_label", "cpu_pct", "mem_pct", "disk_pct", "net_rx_kbps", "net_tx_kbps"]
@@ -583,6 +578,16 @@ cpu_thresh, mem_thresh, disk_thresh, notification_history, active_notifications)
     endpoint = SERVERS[selected_server]
     result = metric_collection(endpoint)
     is_online = result["online"]
+
+    server_results = {selected_server: result}
+    if notification_scope == "all":
+        servers_to_check = list(SERVERS.keys())
+    else:
+        servers_to_check = [selected_server]
+
+    for server_name in servers_to_check:
+        if server_name not in server_results:
+            server_results[server_name] = metric_collection(SERVERS[server_name])
 
     if is_online:
         data = result["metrics"]
@@ -623,31 +628,35 @@ cpu_thresh, mem_thresh, disk_thresh, notification_history, active_notifications)
     metrics_to_check = [
         ("CPU Usage", "cpu_pct", cpu_thresh, cpu_severity, 80),
         ("Memory Usage", "mem_pct", mem_thresh, mem_severity, 80),
-        ("Disk Usage", "disk_pct", disk_thresh, cpu_severity, 85)
+        ("Disk Usage", "disk_pct", disk_thresh, disk_severity, 85)
     ]
 
-    for metric_name, metric_key, threshold, severity, default_threshold in metrics_to_check:
-        alert_key = f"{selected_server}:{metric_name}"
+    for server_name in servers_to_check:
+        server_result = server_results[server_name]
 
-        if is_online:
-            metric_value = new_entry[metric_key]
-            effective_threshold = (
-                threshold if threshold is not None else default_threshold
-            )
+        if not server_result["online"]:
+            continue
+
+        server_metrics = server_result["metrics"]
+
+        for metric_name, metric_key, threshold, severity, default_threshold in metrics_to_check:
+            alert_key = f"{server_name}:{metric_name}"
+            metric_value = server_metrics[metric_key]
+            effective_threshold = (threshold if threshold is not None else default_threshold)
 
             #This part uses the "Notification System" to check the metric.
-            result = check_notification(metric_name, metric_value, mode = notification_mode, 
+            alert_result = check_notification(metric_name, metric_value, mode = notification_mode, 
             threshold = effective_threshold, minimum_severity = severity)
 
             #This part creates and inserts a notification if it does not already exist.
-            if result["alert"]:
+            if alert_result["alert"]:
                 if alert_key not in active_notifications:
                     notification_history.insert(0, {
-                        "id": f"{time.time_ns()}-{selected_server}-{metric_name}",
-                        "server": selected_server,
+                        "id": f"{time.time_ns()}-{server_name}-{metric_name}",
+                        "server": server_name,
                         "metric": metric_name,
                         "value": metric_value,
-                        "status": result["status"],
+                        "status": alert_result["status"],
                         "threshold": effective_threshold,
                         "minimum_severity": severity,
                         "mode": notification_mode,
@@ -663,7 +672,7 @@ cpu_thresh, mem_thresh, disk_thresh, notification_history, active_notifications)
                 if alert_key in active_notifications:
                     for notification in notification_history:
                         if (
-                            notification["server"] == selected_server
+                            notification["server"] == server_name
                             and notification["metric"] == metric_name
                             and not notification.get("resolved", False)
                         ):
@@ -673,10 +682,6 @@ cpu_thresh, mem_thresh, disk_thresh, notification_history, active_notifications)
                             break
                     
                     active_notifications.pop(alert_key, None)
-            
-        #This part resets the active marker in the case of the monitoring data becoming unavailable.
-        else:
-            active_notifications.pop(alert_key, None)
     
     cards = [
         create_stat_card("CPU Usage", new_entry["cpu_pct"], "%", cpu_thresh or 80, is_online, mode = notification_mode, minimum_severity = cpu_severity),
