@@ -14,6 +14,12 @@ SOURCE_API="$PROJECT_DIR/monitor-features/data_collection/monitoring_api.py"
 INSTALL_DIR="/opt/unix-monitor"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 
+#This code is meant to setup the stress-loop at the end of the setup script.
+STRESS_SCRIPT="$PROJECT_DIR/stress-loop.sh"
+STRESS_SOURCE_SERVICE="$PROJECT_DIR/stress-loop.service"
+STRESS_INSTALL_DIR="/opt/server-monitor"
+STRESS_SERVICE_FILE="/etc/systemd/system/stress-loop.service"
+
 echo "Starting The Linux Monitoring API Installation..."
 
 #This part of the setup code is meant to verify that this code is being ran with "sudo".
@@ -43,7 +49,7 @@ if ! id "$SERVICE_USER" >/dev/null 2>&1; then
     --system \
     --gid "$SERVICE_GROUP" \
     --home-dir "$INSTALL_DIR" \
-    --shell /usr/sbin/nologin\
+    --shell /usr/sbin/nologin \
     "$SERVICE_USER"
 fi
 
@@ -101,3 +107,35 @@ echo "Monitoring API Installation Successful!"
 echo "Service: $SERVICE_NAME"
 echo "Service User: $SERVICE_USER"
 echo "Local Endpoint: http://127.0.0.1:8000/metrics"
+
+
+#Before starting the stress-loop installation, the setup code verifies that the source files exist.
+if [ ! -f "$STRESS_SCRIPT" ] || [ ! -f "$STRESS_SOURCE_SERVICE" ]; then
+    echo "ERROR: Stress-loop files were not found."
+    exit 1
+fi
+
+#The second portion of the setup file is meant to setup the stress test.
+apt-get install -y stress-ng systemd
+
+#First, we must set up the installation directory.
+install -d -o root -g root -m 755 "$STRESS_INSTALL_DIR"
+
+#Then, we must copy the stress script and ensure that it can be executed.
+install -o root -g root -m 755 \
+    "$STRESS_SCRIPT" \
+    "$STRESS_INSTALL_DIR/stress-loop.sh"
+
+#Then, we must copy the systemd service definition.
+install -o root -g root -m 644 \
+    "$STRESS_SOURCE_SERVICE" \
+    "$STRESS_SERVICE_FILE"
+
+systemctl daemon-reload
+
+#Finally, the stress-loop installation ends, providing the user with the method to use the stress loop.
+echo "The Stress-Loop Files Have Been Successfully Installed."
+echo "However, The Stress-Loop Must Be Manually Enabled Using: systemctl enable --now stress-loop.service"
+
+#At the end of the setup, the user is told that the VM setup script completed successfully, and their VM should be ready to work with the dashboard.
+echo "VM Setup Has Been Completed!"
