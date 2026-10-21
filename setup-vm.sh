@@ -25,6 +25,11 @@ READER_SCRIPT="$PROJECT_DIR/monitor-features/data_collection/stress_event_reader
 READER_SOURCE_SERVICE="$PROJECT_DIR/stress-event-reader.service"
 READER_SERVICE_FILE="/etc/systemd/system/stress-event-reader.service"
 
+#This code is meant to setup the cron job, which will be used for monitoring API failure recovery.
+CRON_SCRIPT="$PROJECT_DIR/cronstatus.sh"
+CRON_INSTALL_PATH="$INSTALL_DIR/cronstatus.sh"
+CRON_FILE="/etc/cron.d/unix-monitor-health"
+
 echo "Starting The Linux Monitoring API Installation..."
 
 #This part of the setup code is meant to verify that this code is being ran with "sudo".
@@ -145,7 +150,7 @@ echo "However, The Stress-Loop Must Be Manually Enabled Using: systemctl enable 
 #The third portion of the setup script installs the named-pipe reader.
 echo "Installing Stress Event Reader..."
 if [ ! -f "$READER_SCRIPT" ] || [ ! -f "$READER_SOURCE_SERVICE" ]; then
-    echo "ERROR: Stress Event Reader Files Were Not Found."
+    echo "ERROR: Stress event reader files were not found."
     exit 1
 fi
 
@@ -161,9 +166,38 @@ install -o root -g root -m 644 \
 
 #This part of the setup reloads the system, then starts up the reader.
 systemctl daemon-reload
-systemctl enable --now stress-event-reader.service
+systemctl enable stress-event-reader.service
+systemctl restart stress-event-reader.service
 echo "Stress Event Reader Has Been Installed And Started."
 sleep 1
+
+#The fourth part of the setup file is meant to install the cron job health check, which occurs once every 5 minutes.
+echo "Installing API Health Check..."
+
+#To start, we must verify that our cronstatus script exists.
+if [ ! -f "$CRON_SCRIPT" ]; then
+    echo "ERROR: cronstatus.sh was not found."
+    exit 1
+fi
+
+#This part of the setup installs cron and copies the health check script.
+apt-get install -y cron
+install -o root -g root -m 755 \
+    "$CRON_SCRIPT" \
+    "$CRON_INSTALL_PATH"
+
+#Then, we must schedule the script to run every 5 minutes as root.
+printf '*/5 * * * * root %s >> /var/log/unix-monitor-health.log 2>&1\n' \
+    "$CRON_INSTALL_PATH" > "$CRON_FILE"
+
+chmod 644 "$CRON_FILE"
+
+#Lastly, we will start the cron automatically.
+systemctl enable --now cron.service
+
+#When all steps of this part complete, the script will echo the frequency of the cron job, as well as a confirmation that everything set up as intended.
+echo "API Health Check Installed Successfully!"
+echo "Current Schedule: Run Every 5 Minutes"
 
 #At the end of the setup, the user is told that the VM setup script completed successfully, and their VM should be ready to work with the dashboard.
 echo "VM Setup Has Been Completed!"
