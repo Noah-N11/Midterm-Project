@@ -20,7 +20,7 @@ from data_collector import metric_collection
 
 # Our Servers
 SERVERS = {
-    "Server 1": "http://:8000/metrics",
+    "Server 1": "http://104.196.32.65:8000/metrics",
     "Server 2": "http://35.255.80.106:8000/metrics",
     "Server 3": "http://35.202.107.127:8000/metrics",
     "Server 4": "http://35.211.54.249:8000/metrics",
