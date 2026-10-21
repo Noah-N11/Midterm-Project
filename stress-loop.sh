@@ -19,6 +19,14 @@ send_stress_event() {
     fi
 }
 
+#This function was added to handle situations where the stress test is abruptly stopped.
+cleanup() {
+    log "Stress Loop Stopped."
+    send_stress_event "IDLE"
+}
+
+trap cleanup EXIT
+
 run_test() {
     local category="$1"
     local duration="$2"
